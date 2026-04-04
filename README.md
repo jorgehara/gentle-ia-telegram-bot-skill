@@ -63,6 +63,10 @@ All configuration is done via environment variables or `.env` file:
 # Required
 TELEGRAM_BOT_TOKEN=your_bot_token_here
 
+# Security - Whitelist (empty = allow all)
+# Get your Chat ID with /id command
+ALLOWED_CHAT_IDS=123456789,987654321
+
 # OpenCode Server (defaults)
 OPENCODE_URL=http://localhost:4096
 OPENCODE_USERNAME=opencode
@@ -80,10 +84,23 @@ DEBUG=false
 ### Commands
 
 - `/start` - Welcome message and bot info
+- `/id` - Get your Chat ID (for whitelist configuration)
 - `/reset` - Reset the current session
 - `/abort` - Cancel the current operation
 
 Just send any message to chat with OpenCode!
+
+### Security
+
+Use `ALLOWED_CHAT_IDS` to restrict access to specific Telegram users:
+
+1. Start the bot without restrictions
+2. Send `/id` to get your Chat ID
+3. Add your Chat ID to `.env`:
+   ```env
+   ALLOWED_CHAT_IDS=your_chat_id_here
+   ```
+4. Restart the bot
 
 ## 🏗️ Architecture
 

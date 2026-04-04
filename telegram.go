@@ -86,6 +86,13 @@ func (b *TelegramBot) handleMessage(msg *tg.Message) {
 	chatID := msg.Chat.ID
 	text := msg.Text
 
+	// Verificar si el chat está en la whitelist
+	if !b.Config.IsAllowedChat(chatID) {
+		log.Printf("🚫 Chat ID %d no autorizado (usuario: @%s)", chatID, msg.From.UserName)
+		b.sendMessage(chatID, "🚫 Lo siento, este bot es de uso privado.")
+		return
+	}
+
 	// Verificar si ya está procesando
 	b.mu.Lock()
 	if b.processing[chatID] {
@@ -128,6 +135,10 @@ func (b *TelegramBot) handleMessage(msg *tg.Message) {
 		}
 		if msg.Command() == "abort" {
 			b.handleAbort(sessionID, chatID)
+			return
+		}
+		if msg.Command() == "id" {
+			b.handleGetID(msg)
 			return
 		}
 	}
@@ -214,6 +225,26 @@ func (b *TelegramBot) handleAbort(sessionID string, chatID int64) {
 		return
 	}
 	b.sendMessage(chatID, "✅ Operación cancelada.")
+}
+
+// handleGetID muestra información del chat y usuario
+func (b *TelegramBot) handleGetID(msg *tg.Message) {
+	chatID := msg.Chat.ID
+	userID := msg.From.ID
+	username := msg.From.UserName
+	firstName := msg.From.FirstName
+	lastName := msg.From.LastName
+
+	info := fmt.Sprintf("🆔 *Información del Chat*\n\n📱 Chat ID: `%d`\n👤 User ID: `%d`\n🏷️ Username: @%s\n📝 Nombre: %s %s\n\n_Usá el Chat ID para configurar ALLOWED\\_CHAT\\_IDS_",
+		chatID,
+		userID,
+		username,
+		firstName,
+		lastName,
+	)
+
+	log.Printf("ℹ️ ID solicitado - Chat: %d, User: %d (@%s)", chatID, userID, username)
+	b.sendMessageWithMarkdown(chatID, info)
 }
 
 // handleCallback maneja callbacks de botones inline

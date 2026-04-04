@@ -5,12 +5,14 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
 type Config struct {
 	// Telegram
-	BotToken string
+	BotToken       string
+	AllowedChatIDs []int64 // Lista de chat IDs permitidos (vacío = todos)
 
 	// OpenCode
 	OpencodeURL      string
@@ -40,6 +42,7 @@ func LoadConfig() *Config {
 		SessionTTL:       getEnvDuration("SESSION_TTL", 24*time.Hour),
 		EnableMarkdown:   getEnvBool("ENABLE_MARKDOWN", true),
 		Debug:            getEnvBool("DEBUG", false),
+		AllowedChatIDs:   getEnvInt64Slice("ALLOWED_CHAT_IDS", []int64{}),
 	}
 
 	// Bot token es obligatorio
@@ -89,6 +92,31 @@ func getEnvDuration(key string, defaultValue time.Duration) time.Duration {
 	return defaultValue
 }
 
+func getEnvInt64Slice(key string, defaultValue []int64) []int64 {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+
+	parts := strings.Split(value, ",")
+	result := make([]int64, 0, len(parts))
+
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+
+		if id, err := strconv.ParseInt(part, 10, 64); err == nil {
+			result = append(result, id)
+		} else {
+			log.Printf("⚠️  Invalid chat ID '%s' in %s, skipping", part, key)
+		}
+	}
+
+	return result
+}
+
 func (c *Config) String() string {
 	return fmt.Sprintf(`Config{
   BotToken: %s...
@@ -97,6 +125,7 @@ func (c *Config) String() string {
   HTTPPort: %d
   ProjectDir: %s
   EnableMarkdown: %v
+  AllowedChatIDs: %v
 }`,
 		c.BotToken[:min(len(c.BotToken), 10)]+"...",
 		c.OpencodeURL,
@@ -104,5 +133,23 @@ func (c *Config) String() string {
 		c.HTTPPort,
 		c.ProjectDir,
 		c.EnableMarkdown,
+		c.AllowedChatIDs,
 	)
+}
+
+// IsAllowedChat verifica si un chat ID está en la whitelist
+func (c *Config) IsAllowedChat(chatID int64) bool {
+	// Si no hay restricciones, permitir todos
+	if len(c.AllowedChatIDs) == 0 {
+		return true
+	}
+
+	// Verificar si el chatID está en la lista
+	for _, allowedID := range c.AllowedChatIDs {
+		if allowedID == chatID {
+			return true
+		}
+	}
+
+	return false
 }
