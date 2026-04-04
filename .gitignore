@@ -1,0 +1,30 @@
+# Binaries
+telegram-bridge.exe
+telegram-bridge
+telebridge.exe
+telebridge
+*.exe
+*.out
+
+# Environment
+.env
+.env.local
+
+# Go
+*.test
+*.prof
+vendor/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
