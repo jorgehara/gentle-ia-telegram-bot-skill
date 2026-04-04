@@ -1,4 +1,4 @@
-# TeleBridge
+# gentle-ia telegram-bot-skill
 
 > 🚀 A lightning-fast Telegram bot bridge for OpenCode, written in Go
 
@@ -23,14 +23,14 @@ Connect your Telegram bot to OpenCode's AI backend in seconds. Built with Go for
 
 ### Option 1: Download Binary
 
-Download the latest release from [Releases](https://github.com/jorgehara/telebridge/releases)
+Download the latest release from [Releases](https://github.com/jorgehara/gentle-ia-telegram-bot-skill/releases)
 
 ### Option 2: Build from Source
 
 ```bash
-git clone https://github.com/jorgehara/telebridge.git
-cd telebridge
-go build -o telebridge .
+git clone https://github.com/jorgehara/gentle-ia-telegram-bot-skill.git
+cd gentle-ia-telegram-bot-skill
+go build -o gentle-ia-telegram-bot-skill .
 ```
 
 ## 🚀 Quick Start
@@ -50,7 +50,7 @@ go build -o telebridge .
 
 4. **Run the bridge**:
    ```bash
-   ./telebridge
+   ./gentle-ia-telegram-bot-skill
    ```
 
 5. **Chat with your bot** on Telegram! 🎉
@@ -106,7 +106,7 @@ Use `ALLOWED_CHAT_IDS` to restrict access to specific Telegram users:
 
 ```
 ┌─────────────┐     HTTP      ┌─────────────┐     REST     ┌─────────────┐
-│  Telegram   │ ◄──────────►  │  TeleBridge │ ◄─────────►  │  OpenCode   │
+│  Telegram   │ ◄──────────►  │  gentle-ia-telegram-bot-skill │ ◄─────────►  │  OpenCode   │
 │    API      │               │    (Go)     │              │   Server    │
 └─────────────┘               └─────────────┘              └─────────────┘
 ```
@@ -126,7 +126,7 @@ go mod download
 go run .
 
 # Build
-go build -o telebridge .
+go build -o gentle-ia-telegram-bot-skill .
 
 # Run tests
 go test ./...
@@ -135,7 +135,7 @@ go test ./...
 ## 📝 Project Structure
 
 ```
-telebridge/
+gentle-ia-telegram-bot-skill/
 ├── main.go          # Entry point and server setup
 ├── config.go        # Configuration loading
 ├── telegram.go      # Telegram bot handlers

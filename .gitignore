@@ -1,8 +1,6 @@
 # Binaries
-telegram-bridge.exe
-telegram-bridge
-telebridge.exe
-telebridge
+gentle-ia-telegram-bot-skill.exe
+gentle-ia-telegram-bot-skill
 *.exe
 *.out
 
