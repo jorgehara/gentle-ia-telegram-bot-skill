@@ -155,7 +155,16 @@ func (b *TelegramBot) handleMessage(msg *tg.Message) {
 	// Enviar a OpenCode con timeout largo para prompts complejos
 	promptCtx, promptCancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer promptCancel()
+
+	// Mensajes de progreso cada 2 minutos
+	progressDone := make(chan bool)
+	go b.sendProgressMessages(chatID, progressDone)
+
 	response, err := b.Client.SendPrompt(promptCtx, sessionID, prompt)
+
+	// Detener mensajes de progreso
+	close(progressDone)
+
 	if err != nil {
 		log.Printf("❌ Error en prompt para chat %d: %v", chatID, err)
 		b.sendMessage(chatID, "❌ Error al procesar tu mensaje: "+err.Error())
@@ -305,4 +314,36 @@ func EscapeMarkdownV2(text string) string {
 // parseChatID convierte string a int64
 func ParseChatID(s string) (int64, error) {
 	return strconv.ParseInt(s, 10, 64)
+}
+
+// sendProgressMessages envía mensajes de progreso cada 2 minutos mientras procesa
+func (b *TelegramBot) sendProgressMessages(chatID int64, done chan bool) {
+	messages := []string{
+		"⏳ Estoy trabajando en tu solicitud, dame un momento...",
+		"⏳ Todavía procesando, casi listo...",
+		"⏳ Gracias por tu paciencia, sigo trabajando en esto...",
+		"⏳ Un poco más de tiempo, la respuesta está en camino...",
+	}
+
+	ticker := time.NewTicker(120 * time.Second) // Cada 2 minutos
+	defer ticker.Stop()
+
+	messageIndex := 0
+
+	for {
+		select {
+		case <-done:
+			// Procesamiento terminado, salir
+			return
+		case <-ticker.C:
+			// Enviar mensaje de progreso
+			if messageIndex < len(messages) {
+				b.sendMessage(chatID, messages[messageIndex])
+				messageIndex++
+			} else {
+				// Si ya enviamos todos, repetir el último
+				b.sendMessage(chatID, messages[len(messages)-1])
+			}
+		}
+	}
 }
