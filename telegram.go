@@ -122,26 +122,32 @@ func (b *TelegramBot) handleMessage(msg *tg.Message) {
 	}
 
 	// Determinar el texto a enviar
-	prompt := text
-	if msg.Command() != "" {
-		prompt = "/" + msg.Command() + " " + text
-		if msg.Command() == "start" {
+	// Solo procesar comandos locales si es un comando puro (sin argumentos extra)
+	commandPrefix := "/" + msg.Command() + " "
+	isLocalCommand := msg.Command() != "" && (text == commandPrefix || text == "/"+msg.Command())
+
+	if isLocalCommand {
+		command := msg.Command()
+		if command == "start" {
 			b.sendWelcomeMessage(chatID)
 			return
 		}
-		if msg.Command() == "reset" {
+		if command == "reset" {
 			b.handleReset(chatID)
 			return
 		}
-		if msg.Command() == "abort" {
+		if command == "abort" {
 			b.handleAbort(sessionID, chatID)
 			return
 		}
-		if msg.Command() == "id" {
+		if command == "id" {
 			b.handleGetID(msg)
 			return
 		}
 	}
+
+	// Si no es comando local, enviar a OpenCode
+	prompt := text
 
 	// Indicar que está procesando
 	b.sendChatAction(chatID, tg.ChatTyping)

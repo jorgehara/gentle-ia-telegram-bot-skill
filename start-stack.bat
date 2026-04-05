@@ -11,17 +11,6 @@ echo ========================================
 REM Cambiar al directorio del proyecto
 cd /d "%~dp0"
 
-REM Verificar si OpenCode está en PATH
-where opencode >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
-    echo ❌ OpenCode no encontrado en PATH
-    echo    Asegurate de tener OpenCode instalado
-    echo    PD: podes_installarlo con: npm install -g opencode-ai
-    echo.
-    pause
-    exit /b 1
-)
-
 REM Verificar si existe el binario
 if not exist "gentle-ia-telegram-bot-skill.exe" (
     echo ⚠️  Construyendo gentle-ia-telegram-bot-skill.exe...
@@ -38,14 +27,25 @@ echo.
 
 REM Abrir ventana de OpenCode Server
 echo 📡 Iniciando OpenCode Server...
-start "OpenCode Server" cmd /k "echo 🚀 OpenCode Server && opencode serve"
+start "OpenCode Server" cmd /k "cd /d %~dp0 && echo 🚀 OpenCode Server && opencode serve"
 
 REM Esperar un momento para que OpenCode inicie
-timeout /t 3 /nobreak >nul
+timeout /t 5 /nobreak >nul
+
+REM Verificar que OpenCode esté respondiendo
+echo ⏳ Verificando OpenCode...
+:wait_opencode
+ping -n 2 127.0.0.1 >nul
+curl -s http://localhost:4096/health >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo ⏳ Esperando que OpenCode responda...
+    goto wait_opencode
+)
+echo ✅ OpenCode respondiendo
 
 REM Abrir ventana del Bot
 echo 🤖 Iniciando gentle-ia telegram-bot-skill Bot...
-start "gentle-ia Bot" cmd /k "echo 🤖 gentle-ia Bot && gentle-ia-telegram-bot-skill.exe"
+start "gentle-ia Bot" cmd /k "cd /d %~dp0 && echo 🤖 gentle-ia Bot && gentle-ia-telegram-bot-skill.exe"
 
 echo.
 echo ========================================
