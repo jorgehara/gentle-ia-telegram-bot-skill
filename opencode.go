@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	"time"
 )
 
 // OpencodeClient handles communication with OpenCode server
@@ -76,10 +75,11 @@ type HealthResponse struct {
 // NewOpencodeClient creates a new OpenCode client
 func NewOpencodeClient(baseURL, username, password string) *OpencodeClient {
 	return &OpencodeClient{
-		baseURL:    strings.TrimSuffix(baseURL, "/"),
-		username:   username,
-		password:   password,
-		httpClient: &http.Client{Timeout: 120 * time.Second},
+		baseURL:  strings.TrimSuffix(baseURL, "/"),
+		username: username,
+		password: password,
+		// NO timeout en el client - usamos context.WithTimeout en cada request
+		httpClient: &http.Client{},
 		sessions:   make(map[int64]string),
 	}
 }
