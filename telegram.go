@@ -111,10 +111,10 @@ func (b *TelegramBot) handleMessage(msg *tg.Message) {
 		b.mu.Unlock()
 	}()
 
-	// Obtener o crear sesión
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
-	sessionID, err := b.Client.GetOrCreateSession(ctx, chatID, b.Config.ProjectDir)
+	// Obtener o crear sesión (timeout corto para operación rápida)
+	sessionCtx, sessionCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer sessionCancel()
+	sessionID, err := b.Client.GetOrCreateSession(sessionCtx, chatID, b.Config.ProjectDir)
 	if err != nil {
 		log.Printf("❌ Error creando sesión para chat %d: %v", chatID, err)
 		b.sendMessage(chatID, "❌ Error al conectar con OpenCode. Probá más tarde.")
@@ -152,8 +152,10 @@ func (b *TelegramBot) handleMessage(msg *tg.Message) {
 	// Indicar que está procesando
 	b.sendChatAction(chatID, tg.ChatTyping)
 
-	// Enviar a OpenCode
-	response, err := b.Client.SendPrompt(ctx, sessionID, prompt)
+	// Enviar a OpenCode con timeout largo para prompts complejos
+	promptCtx, promptCancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer promptCancel()
+	response, err := b.Client.SendPrompt(promptCtx, sessionID, prompt)
 	if err != nil {
 		log.Printf("❌ Error en prompt para chat %d: %v", chatID, err)
 		b.sendMessage(chatID, "❌ Error al procesar tu mensaje: "+err.Error())
