@@ -346,6 +346,7 @@ Este proyecto está diseñado para integrarse como un **skill** de gentle-ia:
    - Más simple de configurar
    - No requiere HTTPS
    - Funciona en localhost
+   - Webhook no está implementado actualmente
 
 2. **Una sesión por chat**:
    - Mantiene contexto de conversación
@@ -405,7 +406,7 @@ MIT License - Ver archivo [LICENSE](LICENSE)
 | Tecnología | Propósito |
 |------------|-----------|
 | **Go 1.21+** | Lenguaje de programación principal |
-| **telegraf** | Wrapper de Telegram Bot API para Go |
+| **go-telegram-bot-api** | Wrapper de Telegram Bot API para Go |
 | **godotenv** | Carga de variables de entorno desde .env |
 | **OpenCode** | Servidor de IA backend |
 | **Telegram Bot API** | Plataforma de mensajería |

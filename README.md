@@ -113,7 +113,7 @@ Use `ALLOWED_CHAT_IDS` to restrict access to specific Telegram users:
 
 - **Telegram Bot API**: Long polling for updates
 - **OpenCode Server**: HTTP REST API on port 4096
-- **Session Management**: SQLite-based persistence per chat
+- **Session Management**: In-memory per chat (cleared on restart)
 - **Concurrency**: Goroutines for handling multiple chats
 
 ## 🛠️ Development

@@ -36,7 +36,7 @@ REM Verificar que OpenCode esté respondiendo
 echo ⏳ Verificando OpenCode...
 :wait_opencode
 ping -n 2 127.0.0.1 >nul
-curl -s http://localhost:4096/health >nul 2>&1
+curl -s http://localhost:4096/global/health >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
     echo ⏳ Esperando que OpenCode responda...
     goto wait_opencode
@@ -53,7 +53,7 @@ echo ✅ Stack iniciado correctamente!
 echo.
 echo  Terminales abiertas:
 echo   - OpenCode Server (puerto 4096)
-echo   - gentle-ia telegram-bot-skill Bot (puerto 8080)
+echo   - gentle-ia telegram-bot-skill Bot
 echo.
 echo  Chatea con tu bot en Telegram: @jorgeharadevs_gobot
 echo ========================================

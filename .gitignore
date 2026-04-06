@@ -25,4 +25,5 @@ vendor/
 Thumbs.db
 
 # Logs
-*.log
+*.log.atl/
+.atl/
