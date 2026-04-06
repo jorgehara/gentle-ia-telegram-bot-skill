@@ -2,15 +2,17 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/joho/godotenv"
+
+	"github.com/jorgehara/go-telegram-opencode-bridge/internal/config"
+	"github.com/jorgehara/go-telegram-opencode-bridge/internal/opencode"
+	"github.com/jorgehara/go-telegram-opencode-bridge/internal/telegram"
 )
 
 // LoadEnvFile carga un archivo .env si existe
@@ -29,11 +31,11 @@ func main() {
 	LoadEnvFile()
 
 	// Cargar configuración
-	cfg := LoadConfig()
+	cfg := config.LoadConfig()
 	log.Printf("📋 Config loaded: Bot=%s..., OpenCode=%s", cfg.BotToken[:10], cfg.OpencodeURL)
 
 	// Crear cliente OpenCode
-	opencodeClient := NewOpencodeClient(cfg.OpencodeURL, cfg.OpencodeUsername, cfg.OpencodePassword)
+	opencodeClient := opencode.NewOpencodeClient(cfg.OpencodeURL, cfg.OpencodeUsername, cfg.OpencodePassword)
 
 	// Verificar conexión con OpenCode
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -45,21 +47,12 @@ func main() {
 	}
 
 	// Crear servidor Telegram
-	telegramBot, err := NewTelegramBot(cfg.BotToken, opencodeClient, cfg)
+	telegramBot, err := telegram.NewTelegramBot(cfg.BotToken, opencodeClient, cfg)
 	if err != nil {
 		log.Fatalf("❌ Error al inicializar Telegram bot: %v", err)
 	}
 
 	log.Printf("✅ Bot @%s inicializado correctamente", telegramBot.Bot.Self.UserName)
-
-	// Iniciar servidor HTTP para callbacks (webhook mode opcional)
-	go func() {
-		port := cfg.HTTPPort
-		log.Printf("🌐 Servidor HTTP escuchando en :%d", port)
-		if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
-			log.Printf("⚠️  Servidor HTTP terminó: %v", err)
-		}
-	}()
 
 	// Iniciar polling de mensajes
 	go telegramBot.StartPolling()

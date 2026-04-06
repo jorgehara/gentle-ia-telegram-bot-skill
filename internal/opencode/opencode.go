@@ -1,4 +1,4 @@
-package main
+package opencode
 
 import (
 	"bytes"
@@ -145,9 +145,6 @@ func (c *OpencodeClient) createSession(ctx context.Context, projectDir string) (
 	body := map[string]interface{}{
 		"title": "Telegram Bridge Session",
 	}
-	if projectDir != "" && projectDir != "." {
-		body["directory"] = projectDir
-	}
 
 	bodyJSON, err := json.Marshal(body)
 	if err != nil {
@@ -157,6 +154,11 @@ func (c *OpencodeClient) createSession(ctx context.Context, projectDir string) (
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(bodyJSON))
 	if err != nil {
 		return "", err
+	}
+	if projectDir != "" && projectDir != "." {
+		query := req.URL.Query()
+		query.Set("directory", projectDir)
+		req.URL.RawQuery = query.Encode()
 	}
 	req.Header.Set("Content-Type", "application/json")
 	c.addAuth(req)
@@ -178,64 +180,6 @@ func (c *OpencodeClient) createSession(ctx context.Context, projectDir string) (
 	}
 
 	return session.ID, nil
-}
-
-// SendPrompt envía un prompt a OpenCode y retorna la respuesta
-func (c *OpencodeClient) SendPrompt(ctx context.Context, sessionID, text string) (string, error) {
-	url := fmt.Sprintf("%s/session/%s/message", c.baseURL, sessionID)
-
-	promptReq := PromptRequest{
-		Parts: []Part{
-			{Type: "text", Text: text},
-		},
-		NoReply: false,
-	}
-
-	bodyJSON, err := json.Marshal(promptReq)
-	if err != nil {
-		return "", err
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(bodyJSON))
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	c.addAuth(req)
-
-	log.Printf("📤 Sending prompt to session %s: %s", sessionID, truncate(text, 50))
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("prompt request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("prompt failed: %d - %s", resp.StatusCode, string(respBody))
-	}
-
-	var promptResp PromptResponse
-	if err := json.NewDecoder(resp.Body).Decode(&promptResp); err != nil {
-		return "", fmt.Errorf("decode response failed: %w", err)
-	}
-
-	// Extraer texto de la respuesta
-	var responseText string
-	for _, part := range promptResp.Parts {
-		if part.Type == "text" && part.Text != "" {
-			responseText += part.Text + "\n"
-		}
-	}
-
-	responseText = strings.TrimSpace(responseText)
-	if responseText == "" {
-		return "", fmt.Errorf("no text response from OpenCode")
-	}
-
-	log.Printf("📥 Received response (%d chars)", len(responseText))
-	return responseText, nil
 }
 
 // ClearSession borra la sesión de un chat
@@ -262,7 +206,171 @@ func (c *OpencodeClient) AbortSession(ctx context.Context, sessionID string) err
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("abort session failed: %d - %s", resp.StatusCode, string(respBody))
+	}
+
 	return nil
+}
+
+// ProviderInfo representa un proveedor de modelos.
+type ProviderInfo struct {
+	ID      string               `json:"id"`
+	Name    string               `json:"name"`
+	Models  map[string]ModelInfo `json:"models"`
+	Default *DefaultModel        `json:"default,omitempty"`
+}
+
+// ModelInfo representa un modelo disponible.
+type ModelInfo struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// DefaultModel representa el modelo por defecto de un proveedor.
+type DefaultModel struct {
+	ProviderID string `json:"providerID"`
+	ModelID    string `json:"modelID"`
+}
+
+// ConfigResponse representa la respuesta de /config.
+type ConfigResponse struct {
+	Model *DefaultModel `json:"model,omitempty"`
+}
+
+// ProvidersResponse representa la respuesta de /config/providers
+type ProvidersResponse struct {
+	Providers []ProviderInfo `json:"providers"`
+	Default   *DefaultModel  `json:"default,omitempty"`
+}
+
+// GetProviders obtiene la lista de proveedores y modelos disponibles.
+func (c *OpencodeClient) GetProviders(ctx context.Context) ([]ProviderInfo, error) {
+	url := c.baseURL + "/config/providers"
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+	c.addAuth(req)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("get providers: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("get providers failed: %d - %s", resp.StatusCode, string(body))
+	}
+
+	var result ProvidersResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("decode providers: %w", err)
+	}
+
+	return result.Providers, nil
+}
+
+// GetDefaultModel obtiene el modelo por defecto configurado en el servidor.
+func (c *OpencodeClient) GetDefaultModel(ctx context.Context) (*DefaultModel, error) {
+	url := c.baseURL + "/config"
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+	c.addAuth(req)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("get config: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("get config failed: %d - %s", resp.StatusCode, string(body))
+	}
+
+	var cfg ConfigResponse
+	if err := json.NewDecoder(resp.Body).Decode(&cfg); err != nil {
+		return nil, fmt.Errorf("decode config: %w", err)
+	}
+
+	return cfg.Model, nil
+}
+
+// SendPromptWithModel envía un prompt con un modelo específico (opcional).
+func (c *OpencodeClient) SendPromptWithModel(ctx context.Context, sessionID, text string, model *ModelRef) (string, error) {
+	url := fmt.Sprintf("%s/session/%s/message", c.baseURL, sessionID)
+
+	promptReq := PromptRequest{
+		Parts: []Part{
+			{Type: "text", Text: text},
+		},
+		NoReply: false,
+		Model:   model,
+	}
+
+	bodyJSON, err := json.Marshal(promptReq)
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(bodyJSON))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	c.addAuth(req)
+
+	log.Printf("📤 Sending prompt to session %s (model: %s): %s",
+		sessionID, modelLabel(model), truncate(text, 50))
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("prompt request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("prompt failed: %d - %s", resp.StatusCode, string(respBody))
+	}
+
+	var promptResp PromptResponse
+	if err := json.NewDecoder(resp.Body).Decode(&promptResp); err != nil {
+		return "", fmt.Errorf("decode response failed: %w", err)
+	}
+
+	var responseText string
+	for _, part := range promptResp.Parts {
+		if part.Type == "text" && part.Text != "" {
+			responseText += part.Text + "\n"
+		}
+	}
+
+	responseText = strings.TrimSpace(responseText)
+	if responseText == "" {
+		return "", fmt.Errorf("no text response from OpenCode")
+	}
+
+	log.Printf("📥 Received response (%d chars)", len(responseText))
+	return responseText, nil
+}
+
+// SendPrompt envía un prompt a OpenCode y retorna la respuesta (sin modelo específico).
+func (c *OpencodeClient) SendPrompt(ctx context.Context, sessionID, text string) (string, error) {
+	return c.SendPromptWithModel(ctx, sessionID, text, nil)
+}
+
+// modelLabel retorna una etiqueta legible para el modelo.
+func modelLabel(m *ModelRef) string {
+	if m == nil {
+		return "default"
+	}
+	return m.ProviderID + "/" + m.ModelID
 }
 
 // addAuth agrega autenticación básica
